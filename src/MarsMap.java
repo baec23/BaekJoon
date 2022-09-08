@@ -9,50 +9,90 @@ public class MarsMap {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
 
-        int numMaps = Integer.parseInt(sc.nextLine());
+        int numMaps = sc.nextInt();
         TreeSet<Integer> xSet = new TreeSet<>();
-        TreeSet<Integer> ySet = new TreeSet<>();
-        Set<Rectangle> inputRectangles = new HashSet<>();
-        Set<Rectangle> splitRectangles = new HashSet<>();
+        Map<Integer, List<Rectangle>> xStartRectanglesMap = new HashMap<>();
+
         long totalArea = 0;
         for (int i = 0; i < numMaps; i++) {
-            String[] splitString = sc.nextLine().split(" ");
-            for (int j = 0; j < splitString.length; j++) {
-                int minX = Integer.parseInt(splitString[0]);
-                int minY = Integer.parseInt(splitString[1]);
-                int maxX = Integer.parseInt(splitString[2]);
-                int maxY = Integer.parseInt(splitString[3]);
-                inputRectangles.add(new Rectangle(minX, minY, maxX, maxY));
-                xSet.add(minX);
-                xSet.add(maxX);
-                ySet.add(minY);
-                ySet.add(maxY);
-            }
+            int minX = sc.nextInt();
+            int minY = sc.nextInt();
+            int maxX = sc.nextInt();
+            int maxY = sc.nextInt();
+            xStartRectanglesMap.putIfAbsent(minX, new ArrayList<>());
+            xStartRectanglesMap.get(minX).add(new Rectangle(minX, minY, maxX, maxY));
+            xSet.add(minX);
+            xSet.add(maxX);
         }
+        Range[] ranges = new Range[xSet.size() - 1];
         Iterator<Integer> it = xSet.iterator();
-        int startX = -1;
+        int startX;
         int endX = -1;
+        int index = 0;
         if (it.hasNext())
             endX = it.next();
         while (it.hasNext()) {
             startX = endX;
             endX = it.next();
-
-            Iterator<Integer> it2 = ySet.iterator();
-            int startY = -1;
-            int endY = -1;
-            if (it2.hasNext())
-                endY = it2.next();
-            while (it2.hasNext()) {
-                startY = endY;
-                endY = it2.next();
-                splitRectangles.add(new Rectangle(startX, startY, endX, endY));
+            ranges[index] = new Range(startX, endX);
+            index++;
+        }
+        for (Range r : ranges) {
+            List<Rectangle> rectangles = xStartRectanglesMap.get(r.start);
+            if (rectangles != null && !rectangles.isEmpty()) {
+                List<Range> yRanges = new ArrayList<>(rectangles.size());
+                for (Rectangle rect : rectangles) {
+                    yRanges.add(new Range(rect.minY, rect.maxY));
+                    if (rect.maxX > r.end) {
+                        xStartRectanglesMap.putIfAbsent(r.end, new ArrayList<>());
+                        xStartRectanglesMap.get(r.end).add(new Rectangle(r.end, rect.minY, rect.maxX, rect.maxY));
+                    }
+                }
+                List<Range> mergedRanges = Range.mergeRanges(yRanges);
+                for (Range range : mergedRanges) {
+                    totalArea += (long) (range.end - range.start) * (r.end - r.start);
+                }
             }
         }
-        for (Rectangle r : splitRectangles) {
-
-        }
         System.out.println(totalArea);
+    }
+
+    private static class Range {
+        private int start;
+        private int end;
+
+        public Range(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public static List<Range> mergeRanges(List<Range> ranges) {
+            ranges.sort(new Comparator<Range>() {
+                @Override
+                public int compare(Range o1, Range o2) {
+                    return Integer.compare(o1.start, o2.start);
+                }
+            });
+            List<Range> toReturn = new ArrayList<>();
+            int start = -1;
+            int end = -1;
+            for (Range r : ranges) {
+                if (start < 0) {
+                    start = r.start;
+                    end = r.end;
+                } else {
+                    if (r.start > end) {
+                        toReturn.add(new Range(start, end));
+                        start = r.start;
+                        end = r.end;
+                    } else {
+                        end = Math.max(end, r.end);
+                    }
+                }
+            }
+            toReturn.add(new Range(start, end));
+            return toReturn;
+        }
     }
 
     private static class Rectangle {
@@ -66,32 +106,6 @@ public class MarsMap {
             this.minY = minY;
             this.maxX = maxX;
             this.maxY = maxY;
-        }
-
-        public Rectangle getRectangleInSpace(int minX, int minY, int maxX, int maxY) {
-            if (this.minX >= maxX || this.maxX <= minX || this.minY >= maxY || this.maxY <= minY)
-                return null;
-            else
-                return new Rectangle(minX, minY, maxX, maxY);
-        }
-
-        public long getArea() {
-            return (long) (maxY - minY) * (maxX - minX);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof Rectangle))
-                return false;
-            return minX == ((Rectangle) obj).minX &&
-                    minY == ((Rectangle) obj).minY &&
-                    maxX == ((Rectangle) obj).maxX &&
-                    maxY == ((Rectangle) obj).maxY;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(minX, minY, maxX, maxY);
         }
     }
 }
